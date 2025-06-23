@@ -1,0 +1,33 @@
+mkdir -p ~/miniconda3 && wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh && bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3 && rm ~/miniconda3/miniconda.sh && source ~/miniconda3/bin/activate && conda init --all
+
+conda create -n esm 'python=3.10' -y && conda activate esm && conda install -c conda-forge rsync tmux vim -y
+
+pip install "numpy<2" "torch>=2.2.0" "torchvision" "torchtext" "transformers<4.48.2" "ipython" "einops" "biotite>=1.0.0" "msgpack-numpy" "biopython" "scikit-learn" "brotli" "attrs" "pandas" "cloudpathlib" "tenacity" "zstd" && pip install run-with-coverage coverage2sketch
+
+echo '''from huggingface_hub import login
+from esm.models.esm3 import ESM3
+from esm.sdk.api import ESM3InferenceClient, ESMProtein, GenerationConfig
+
+# Will instruct you how to get an API key from huggingface hub, make one with "Read" permission.
+login()
+
+# This will download the model weights and instantiate the model on your machine.
+model: ESM3InferenceClient = ESM3.from_pretrained("esm3-open").to("cuda") # or "cpu"
+
+# Generate a completion for a partial Carbonic Anhydrase (2vvb)
+prompt = "___________________________________________________DQATSLRILNNGHAFNVEFDDSQDKAVLKGGPLDGTYRLIQFHFHWGSLDGQGSEHTVDKKKYAAELHLVHWNTKYGDFGKAVQQPDGLAVLGIFLKVGSAKPGLQKVVDVLDSIKTKGKSADFTNFDPRGLLPESLDYWTYPGSLTTPP___________________________________________________________"
+protein = ESMProtein(sequence=prompt)
+# Generate the sequence, then the structure. This will iteratively unmask the sequence track.
+protein = model.generate(protein, GenerationConfig(track="sequence", num_steps=8, temperature=0.7))
+# We can show the predicted structure for the generated sequence.
+protein = model.generate(protein, GenerationConfig(track="structure", num_steps=8))
+protein.to_pdb("./generation.pdb")
+# Then we can do a round trip design by inverse folding the sequence and recomputing the structure
+protein.sequence = None
+protein = model.generate(protein, GenerationConfig(track="sequence", num_steps=8))
+protein.coordinates = None
+protein = model.generate(protein, GenerationConfig(track="structure", num_steps=8))
+protein.to_pdb("./round_tripped.pdb")''' > quickstart.py
+
+python -m run_with_coverage -c quickstart.sqlite3 -v -- quickstart.py && python -m coverage2sketch -c quickstart.sqlite3 > sketches.md
+
