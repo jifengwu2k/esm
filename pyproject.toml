@@ -21,6 +21,7 @@ classifiers = [
 ]
 
 dependencies = [
+  "numpy<2",
   "torch>=2.2.0",
   "torchvision",
   "torchtext",
@@ -38,32 +39,3 @@ dependencies = [
   "tenacity",
   "zstd"
 ]
-
-[tool.setuptools]
-package-dir = {"" = "."}
-include-package-data = true
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["esm*"]
-
-[tool.setuptools.package-data]
-esm = ["data/*"]
-
-[tool.pixi.project]
-channels = ["conda-forge"]
-platforms = ["linux-64"]
-
-# These are build dependencies, to ensure pip support, keep run-time deps above in `dependencies`
-[tool.pixi.dependencies]
-pkg-config = "*"
-cmake = "*"
-pip = "*"
-twine = "*"
-
-[tool.pixi.pypi-dependencies]
-esm = { path = ".", editable = true }
-
-[tool.pixi.tasks]
-build-wheel = "python -m pip wheel --no-deps -w dist ."
-upload-wheel = "python -m twine upload --repository pypi"

@@ -2,7 +2,7 @@ mkdir -p ~/miniconda3 && wget https://repo.anaconda.com/miniconda/Miniconda3-lat
 
 conda create -n esm 'python=3.10' -y && conda activate esm && conda install -c conda-forge rsync tmux vim -y
 
-pip install "numpy<2" "torch>=2.2.0" "torchvision" "torchtext" "transformers<4.48.2" "ipython" "einops" "biotite>=1.0.0" "msgpack-numpy" "biopython" "scikit-learn" "brotli" "attrs" "pandas" "cloudpathlib" "tenacity" "zstd" && pip install run-with-coverage coverage2sketch
+pip install -r requirements.txt && pip install run-with-coverage coverage2sketch
 
 echo '''from huggingface_hub import login
 from esm.models.esm3 import ESM3

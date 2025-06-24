@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import contextlib
 from functools import partial
-from typing import Callable
 
 import attr
 import einops
@@ -32,10 +31,6 @@ from esm.sdk.api import (
 from esm.tokenization import TokenizerCollectionProtocol
 from esm.utils import encoding
 from esm.utils.constants import esm3 as C
-from esm.utils.constants.models import (
-    ESM3_OPEN_SMALL,
-    normalize_model_name,
-)
 from esm.utils.decoding import decode_protein_tensor
 from esm.utils.generation import (
     _batch_forward,
@@ -98,15 +93,15 @@ class EncodeInputs(nn.Module):
         self.residue_embed = nn.EmbeddingBag(1478, d_model, mode="sum", padding_idx=0)
 
     def forward(
-        self,
-        sequence_tokens: torch.Tensor,
-        structure_tokens: torch.Tensor,
-        average_plddt: torch.Tensor,
-        per_res_plddt: torch.Tensor,
-        ss8_tokens: torch.Tensor,
-        sasa_tokens: torch.Tensor,
-        function_tokens: torch.Tensor,
-        residue_annotation_tokens: torch.Tensor,
+            self,
+            sequence_tokens: torch.Tensor,
+            structure_tokens: torch.Tensor,
+            average_plddt: torch.Tensor,
+            per_res_plddt: torch.Tensor,
+            ss8_tokens: torch.Tensor,
+            sasa_tokens: torch.Tensor,
+            function_tokens: torch.Tensor,
+            residue_annotation_tokens: torch.Tensor,
     ) -> torch.Tensor:
         sequence_embed = self.sequence_embed(sequence_tokens)
 
@@ -128,8 +123,8 @@ class EncodeInputs(nn.Module):
             [
                 embed_fn(funcs)
                 for embed_fn, funcs in zip(
-                    self.function_embed, function_tokens.unbind(-1)
-                )
+                self.function_embed, function_tokens.unbind(-1)
+            )
             ],
             -1,
         )
@@ -144,14 +139,14 @@ class EncodeInputs(nn.Module):
         residue_embed = einops.rearrange(residue_embed, "(B L) D -> B L D", B=B, L=L)
 
         return (
-            sequence_embed
-            + plddt_embed
-            + structure_per_res_plddt
-            + structure_embed
-            + ss8_embed
-            + sasa_embed
-            + function_embed
-            + residue_embed
+                sequence_embed
+                + plddt_embed
+                + structure_per_res_plddt
+                + structure_embed
+                + ss8_embed
+                + sasa_embed
+                + function_embed
+                + residue_embed
         )
 
 
@@ -198,15 +193,15 @@ class ESM3(nn.Module, ESM3InferenceClient):
     """
 
     def __init__(
-        self,
-        d_model: int,
-        n_heads: int,
-        v_heads: int,
-        n_layers: int,
-        structure_encoder_fn: Callable[[torch.device | str], StructureTokenEncoder],
-        structure_decoder_fn: Callable[[torch.device | str], StructureTokenDecoder],
-        function_decoder_fn: Callable[[torch.device | str], FunctionTokenDecoder],
-        tokenizers: TokenizerCollectionProtocol,
+            self,
+            d_model: int,
+            n_heads: int,
+            v_heads: int,
+            n_layers: int,
+            structure_encoder: StructureTokenEncoder,
+            structure_decoder: StructureTokenDecoder,
+            function_decoder: FunctionTokenDecoder,
+            tokenizers: TokenizerCollectionProtocol,
     ):
         super().__init__()
         self.encoder = EncodeInputs(d_model)
@@ -215,32 +210,11 @@ class ESM3(nn.Module, ESM3InferenceClient):
         )
         self.output_heads = OutputHeads(d_model)
 
-        self.structure_encoder_fn = structure_encoder_fn
-        self.structure_decoder_fn = structure_decoder_fn
-        self.function_decoder_fn = function_decoder_fn
-
-        self._structure_encoder = None
-        self._structure_decoder = None
-        self._function_decoder = None
+        self.structure_encoder = structure_encoder
+        self.structure_decoder = structure_decoder
+        self.function_decoder = function_decoder
 
         self.tokenizers = tokenizers
-
-    @classmethod
-    def from_pretrained(
-        cls, model_name: str = ESM3_OPEN_SMALL, device: torch.device | None = None
-    ) -> ESM3:
-        from esm.pretrained import load_local_model
-
-        model_name = normalize_model_name(model_name)
-        if not model_name:
-            raise ValueError(f"Model name {model_name} is not a valid ESM3 model name.")
-        if device is None:
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = load_local_model(model_name, device=device)
-        if device.type != "cpu":
-            model = model.to(torch.bfloat16)
-        assert isinstance(model, ESM3)
-        return model
 
     @property
     def device(self):
@@ -251,34 +225,28 @@ class ESM3(nn.Module, ESM3InferenceClient):
         return self
 
     def get_structure_encoder(self) -> StructureTokenEncoder:
-        if self._structure_encoder is None:
-            self._structure_encoder = self.structure_encoder_fn(self.device)
-        return self._structure_encoder
+        return self.structure_encoder
 
     def get_structure_decoder(self) -> StructureTokenDecoder:
-        if self._structure_decoder is None:
-            self._structure_decoder = self.structure_decoder_fn(self.device)
-        return self._structure_decoder
+        return self.structure_decoder
 
     def get_function_decoder(self) -> FunctionTokenDecoder:
-        if self._function_decoder is None:
-            self._function_decoder = self.function_decoder_fn(self.device)
-        return self._function_decoder
+        return self.function_decoder
 
     def forward(
-        self,
-        *,
-        sequence_tokens: torch.Tensor | None = None,
-        structure_tokens: torch.Tensor | None = None,
-        ss8_tokens: torch.Tensor | None = None,
-        sasa_tokens: torch.Tensor | None = None,
-        function_tokens: torch.Tensor | None = None,
-        residue_annotation_tokens: torch.Tensor | None = None,
-        average_plddt: torch.Tensor | None = None,
-        per_res_plddt: torch.Tensor | None = None,
-        structure_coords: torch.Tensor | None = None,
-        chain_id: torch.Tensor | None = None,
-        sequence_id: torch.Tensor | None = None,
+            self,
+            *,
+            sequence_tokens: torch.Tensor | None = None,
+            structure_tokens: torch.Tensor | None = None,
+            ss8_tokens: torch.Tensor | None = None,
+            sasa_tokens: torch.Tensor | None = None,
+            function_tokens: torch.Tensor | None = None,
+            residue_annotation_tokens: torch.Tensor | None = None,
+            average_plddt: torch.Tensor | None = None,
+            per_res_plddt: torch.Tensor | None = None,
+            structure_coords: torch.Tensor | None = None,
+            chain_id: torch.Tensor | None = None,
+            sequence_id: torch.Tensor | None = None,
     ) -> ESMOutput:
         """
         Performs forward pass through the ESM3 model. Check utils to see how to tokenize inputs from raw data.
@@ -349,8 +317,8 @@ class ESM3(nn.Module, ESM3InferenceClient):
             )
 
         structure_coords = structure_coords[
-            ..., :3, :
-        ]  # In case we pass in an atom14 or atom37 repr
+                           ..., :3, :
+                           ]  # In case we pass in an atom14 or atom37 repr
         affine, affine_mask = build_affine3d_from_coordinates(structure_coords)
 
         structure_tokens = defaults(structure_tokens, C.STRUCTURE_MASK_TOKEN)
@@ -389,7 +357,7 @@ class ESM3(nn.Module, ESM3InferenceClient):
         return proteins[0]
 
     def batch_generate(
-        self, inputs: list[ProteinType], configs: list[GenerationConfig]
+            self, inputs: list[ProteinType], configs: list[GenerationConfig]
     ) -> list[ProteinType]:
         assert len(inputs) == len(
             configs
@@ -508,9 +476,9 @@ class ESM3(nn.Module, ESM3InferenceClient):
         )
 
     def logits(
-        self,
-        input: ESMProteinTensor | _BatchedESMProteinTensor,
-        config: LogitsConfig = LogitsConfig(),
+            self,
+            input: ESMProteinTensor | _BatchedESMProteinTensor,
+            config: LogitsConfig = LogitsConfig(),
     ) -> LogitsOutput:
         if not isinstance(input, _BatchedESMProteinTensor):
             # Create batch dimension if necessary.
@@ -566,7 +534,7 @@ class ESM3(nn.Module, ESM3InferenceClient):
         )
 
     def forward_and_sample(
-        self, input: ESMProteinTensor, sampling_configuration: SamplingConfig
+            self, input: ESMProteinTensor, sampling_configuration: SamplingConfig
     ) -> ForwardAndSampleOutput:
         validate_sampling_config(sampling_configuration, on_invalid="warn")
 

@@ -1,10 +1,8 @@
-import os
 from collections import defaultdict
 from io import BytesIO
 from typing import Any, ContextManager, Sequence, TypeVar
 from warnings import warn
 
-import huggingface_hub
 import numpy as np
 import torch
 import zstd
@@ -14,12 +12,11 @@ from esm.utils.types import FunctionAnnotation
 
 MAX_SUPPORTED_DISTANCE = 1e6
 
-
 TSequence = TypeVar("TSequence", bound=Sequence)
 
 
 def slice_python_object_as_numpy(
-    obj: TSequence, idx: int | list[int] | slice | np.ndarray
+        obj: TSequence, idx: int | list[int] | slice | np.ndarray
 ) -> TSequence:
     """
     Slice a python object (like a list, string, or tuple) as if it was a numpy object.
@@ -62,7 +59,7 @@ def rbf(values, v_min, v_max, n_bins=16):
     rbf_centers = rbf_centers.view([1] * len(values.shape) + [-1])
     rbf_std = (v_max - v_min) / n_bins
     z = (values.unsqueeze(-1) - rbf_centers) / rbf_std
-    return torch.exp(-(z**2))
+    return torch.exp(-(z ** 2))
 
 
 def batched_gather(data, inds, dim=0, no_batch_dims=0):
@@ -83,12 +80,12 @@ def node_gather(s: torch.Tensor, edges: torch.Tensor) -> torch.Tensor:
 
 
 def knn_graph(
-    coords: torch.Tensor,
-    coord_mask: torch.Tensor,
-    padding_mask: torch.Tensor,
-    sequence_id: torch.Tensor,
-    *,
-    no_knn: int,
+        coords: torch.Tensor,
+        coord_mask: torch.Tensor,
+        padding_mask: torch.Tensor,
+        sequence_id: torch.Tensor,
+        *,
+        no_knn: int,
 ):
     L = coords.shape[-2]
     num_by_dist = min(no_knn, L)
@@ -125,9 +122,9 @@ def knn_graph(
 
 
 def stack_variable_length_tensors(
-    sequences: Sequence[torch.Tensor],
-    constant_value: int | float = 0,
-    dtype: torch.dtype | None = None,
+        sequences: Sequence[torch.Tensor],
+        constant_value: int | float = 0,
+        dtype: torch.dtype | None = None,
 ) -> torch.Tensor:
     """Automatically stack tensors together, padding variable lengths with the
     value in constant_value. Handles an arbitrary number of dimensions.
@@ -157,7 +154,7 @@ def stack_variable_length_tensors(
 
 
 def unbinpack(
-    tensor: torch.Tensor, sequence_id: torch.Tensor | None, pad_value: int | float
+        tensor: torch.Tensor, sequence_id: torch.Tensor | None, pad_value: int | float
 ):
     """
     Args:
@@ -172,7 +169,7 @@ def unbinpack(
     unpacked_tensors = []
     num_sequences = sequence_id.max(dim=-1).values + 1
     for batch_idx, (batch_seqid, batch_num_sequences) in enumerate(
-        zip(sequence_id, num_sequences)
+            zip(sequence_id, num_sequences)
     ):
         for seqid in range(batch_num_sequences):
             mask = batch_seqid == seqid
@@ -227,7 +224,7 @@ def merge_ranges(ranges: list[range], merge_gap_max: int | None = None) -> list[
 
 
 def merge_annotations(
-    annotations: list[FunctionAnnotation], merge_gap_max: int | None = None
+        annotations: list[FunctionAnnotation], merge_gap_max: int | None = None
 ) -> list[FunctionAnnotation]:
     """Merges annotations into non-overlapping segments.
 
@@ -282,13 +279,6 @@ def maybe_list(x, convert_nan_to_none: bool = False) -> list | None:
     np_arr = x.cpu().numpy().astype(object)
     np_arr[nan_mask.cpu().numpy()] = None
     return np_arr.tolist()
-
-
-def huggingfacehub_login():
-    """Authenticates with the Hugging Face Hub using the HF_TOKEN environment
-    variable, else by prompting the user"""
-    token = os.environ.get("HF_TOKEN")
-    huggingface_hub.login(token=token)
 
 
 def get_chainbreak_boundaries_from_sequence(sequence: Sequence[str]) -> np.ndarray:

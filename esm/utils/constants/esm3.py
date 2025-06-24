@@ -1,8 +1,4 @@
-import os
-from functools import cache
 from pathlib import Path
-
-from huggingface_hub import snapshot_download
 
 SEQUENCE_BOS_TOKEN = 0
 SEQUENCE_PAD_TOKEN = 1
@@ -91,26 +87,7 @@ SASA_DISCRETIZATION_BOUNDARIES = [
 
 MAX_RESIDUE_ANNOTATIONS = 16
 
-
 TFIDF_VECTOR_SIZE = 58641
-
-
-@staticmethod
-@cache
-def data_root(model: str):
-    if "INFRA_PROVIDER" in os.environ:
-        return Path("")
-    # Try to download from hugginface if it doesn't exist
-    if model.startswith("esm3"):
-        path = Path(snapshot_download(repo_id="EvolutionaryScale/esm3-sm-open-v1"))
-    elif model.startswith("esmc-300"):
-        path = Path(snapshot_download(repo_id="EvolutionaryScale/esmc-300m-2024-12"))
-    elif model.startswith("esmc-600"):
-        path = Path(snapshot_download(repo_id="EvolutionaryScale/esmc-600m-2024-12"))
-    else:
-        raise ValueError(f"{model=} is an invalid model name.")
-    return path
-
 
 IN_REPO_DATA_FOLDER = Path(__file__).parents[2] / "data"
 
@@ -122,7 +99,7 @@ INTERPRO_2ID = "data/tag_dict_4_safety_filtered.json"
 LSH_TABLE_PATHS = {"8bit": "data/hyperplanes_8bit_58641.npz"}
 
 KEYWORDS_VOCABULARY = (
-    IN_REPO_DATA_FOLDER / "keyword_vocabulary_safety_filtered_58641.txt"
+        IN_REPO_DATA_FOLDER / "keyword_vocabulary_safety_filtered_58641.txt"
 )
 KEYWORDS_IDF = IN_REPO_DATA_FOLDER / "keyword_idf_safety_filtered_58641.npy"
 

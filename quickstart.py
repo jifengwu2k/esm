@@ -1,12 +1,23 @@
-from huggingface_hub import login
-from esm.models.esm3 import ESM3
-from esm.sdk.api import ESM3InferenceClient, ESMProtein, GenerationConfig
+import torch
 
-# Will instruct you how to get an API key from huggingface hub, make one with "Read" permission.
-login()
+from esm.pretrained import ESM3_sm_open_v0
+from esm.sdk.api import ESMProtein, GenerationConfig
 
-# This will download the model weights and instantiate the model on your machine.
-model: ESM3InferenceClient = ESM3.from_pretrained("esm3-open").to("cuda") # or "cpu"
+
+
+# This will instantiate the model on your machine.
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+model = ESM3_sm_open_v0(
+    device=device,
+    esm3_structure_encoder_v0_pth_path='',
+    esm3_structure_decoder_v0_pth_path='',
+    esm3_function_decoder_v0_pth_path='',
+    esm3_sm_open_v1_pth_path='',
+)
+
+if device.type != "cpu":
+    model = model.to(torch.bfloat16)
 
 # Generate a completion for a partial Carbonic Anhydrase (2vvb)
 prompt = "___________________________________________________DQATSLRILNNGHAFNVEFDDSQDKAVLKGGPLDGTYRLIQFHFHWGSLDGQGSEHTVDKKKYAAELHLVHWNTKYGDFGKAVQQPDGLAVLGIFLKVGSAKPGLQKVVDVLDSIKTKGKSADFTNFDPRGLLPESLDYWTYPGSLTTPP___________________________________________________________"
