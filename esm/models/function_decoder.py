@@ -1,7 +1,6 @@
 """Function Token Decoder."""
 
 from collections import defaultdict
-from dataclasses import dataclass, field
 
 import numpy as np
 import pandas as pd
@@ -12,90 +11,72 @@ from cloudpathlib import AnyPath
 
 from esm.layers.regression_head import RegressionHead
 from esm.layers.transformer_stack import TransformerStack
-from esm.tokenization.function_tokenizer import (
-    InterProQuantizedTokenizer,
-)
-from esm.utils.constants import esm3 as C
+from esm.tokenization.function_tokenizer import InterProQuantizedTokenizer
 from esm.utils.misc import merge_annotations, merge_ranges
 from esm.utils.types import FunctionAnnotation
 
 
-@dataclass(frozen=True)
-class FunctionTokenDecoderConfig:
-    """Configures function token decoder."""
-
-    # Embedding dimension of decoder.
-    d_model: int = 1024
-    # Number of attention heads of decoder.
-    n_heads: int = 8
-    # Number of layers of decoder.
-    n_layers: int = 3
-    # Number of integer values that function tokens may assume.
-    function_token_vocab_size: int = 260
-    # Number of function tokens at each position.
-    function_token_depth: int = 8
-    # Number of InterPro labels that can be decoded.
-    num_interpro_classes: int = 29026
-    # Number of function keywords that can be decoded.
-    keyword_vocabulary_size: int = 58641
-    # List of supported InterPro ids.
-    interpro_entry_list: str = field(default_factory=lambda: str(C.INTERPRO_ENTRY))
-    # Path to keywords vocabulary.
-    keyword_vocabulary_path: str = field(
-        default_factory=lambda: str(C.data_root("esm3") / C.KEYWORDS_VOCABULARY)
-    )
-    # Whether to unpack LSH bits into single-bit tokens.
-    unpack_lsh_bits: bool = True
-    # The number of special tokens in the function tokenizer vocabulary which come
-    # before the LSH tokens.
-    num_special_tokens: int = 4
-    # The number of bits per LSH token in the function tokenizer.
-    bits_per_token: int = 8
-
-
 class FunctionTokenDecoder(nn.Module):
-    def __init__(self, config: FunctionTokenDecoderConfig | None = None):
+    def __init__(
+            self,
+            # Embedding dimension of decoder.
+            d_model: int,
+            # Number of attention heads of decoder.
+            n_heads: int,
+            # Number of layers of decoder.
+            n_layers: int,
+            # Number of integer values that function tokens may assume.
+            function_token_vocab_size: int,
+            # Number of function tokens at each position.
+            function_token_depth: int,
+            # List of supported InterPro ids.
+            interpro_entry_list: str,
+            # Path to keywords vocabulary.
+            keyword_vocabulary_path: str,
+            # Whether to unpack LSH bits into single-bit tokens.
+            unpack_lsh_bits: bool,
+            # The number of special tokens in the function tokenizer vocabulary which come before the LSH tokens.
+            num_special_tokens: int,
+            # The number of bits per LSH token in the function tokenizer.
+            bits_per_token: int,
+    ):
         """Constructs function token decoder."""
         super().__init__()
-        if config is None:
-            config = FunctionTokenDecoderConfig()
-        self.config = config
+
+        with AnyPath(keyword_vocabulary_path).open("r") as f:
+            self.keywords_vocabulary: list[str] = list(f.read().strip().split("\n"))
 
         # Get the supported set of InterPro ids.
-        with AnyPath(config.interpro_entry_list).open("r") as f:
+        with AnyPath(interpro_entry_list).open("r") as f:
             df = pd.read_csv(f, sep="\t")
         self.interpro_ids = sorted(df.ENTRY_AC)
         self.interpro2index = {
             interpro_id: i for i, interpro_id in enumerate(self.interpro_ids)
         }
-        assert len(self.interpro_ids) == config.num_interpro_classes
 
-        with AnyPath(config.keyword_vocabulary_path).open("r") as f:
-            self.keywords_vocabulary: list[str] = list(f.read().strip().split("\n"))
-            assert len(self.keywords_vocabulary) == config.keyword_vocabulary_size
-
-        if config.unpack_lsh_bits:
-            vocab_size = 2 * config.function_token_depth * config.bits_per_token
+        if unpack_lsh_bits:
+            vocab_size = 2 * function_token_depth * bits_per_token
         else:
             # Function-token id's re-use the same token ids at each position along the depth
             # dimension, despite distinct meanings. The decoder should take this into
             # account so create distinct embeddings for tokens at each position.
             vocab_size = (
-                self.config.function_token_depth * self.config.function_token_vocab_size
+                    function_token_depth * function_token_vocab_size
             )
 
         self.embedding = nn.Embedding(
             # Function-token id's re-use the same token ids at each position along the
             # depth dimension, despite distinct meanings. The decoder should take this
             # into account so create distinct embeddings for tokens at each position.
-            num_embeddings=(vocab_size),
-            embedding_dim=config.d_model,
+            num_embeddings=vocab_size,
+            embedding_dim=d_model,
         )
+
         self.decoder = TransformerStack(
-            d_model=config.d_model,
-            n_heads=config.n_heads,
+            d_model=d_model,
+            n_heads=n_heads,
             v_heads=None,
-            n_layers=config.n_layers,
+            n_layers=n_layers,
             n_layers_geom=0,
             scale_residue=False,
             bias=True,
@@ -103,28 +84,34 @@ class FunctionTokenDecoder(nn.Module):
             ffn_type="gelu",
             expansion_ratio=4,
         )
+
         self.heads = nn.ModuleDict(
             {
                 # Binary classification head predicting which keywords are present.
                 "keyword_logits": RegressionHead(
-                    d_model=config.d_model,
-                    output_dim=config.keyword_vocabulary_size,
-                    hidden_dim=4 * config.d_model,
+                    d_model=d_model,
+                    output_dim=len(self.keywords_vocabulary),
+                    hidden_dim=4 * d_model,
                 ),
                 # Regresses the TF-IDF value of each present keyword.
                 "keyword_tfidf": RegressionHead(
-                    d_model=config.d_model,
-                    output_dim=config.keyword_vocabulary_size,
-                    hidden_dim=4 * config.d_model,
+                    d_model=d_model,
+                    output_dim=len(self.keywords_vocabulary),
+                    hidden_dim=4 * d_model,
                 ),
                 # Predicts which InterPro annotations are present.
                 "interpro_logits": RegressionHead(
-                    d_model=config.d_model,
-                    output_dim=config.num_interpro_classes,
-                    hidden_dim=4 * config.d_model,
+                    d_model=d_model,
+                    output_dim=len(self.interpro_ids),
+                    hidden_dim=4 * d_model,
                 ),
             }
         )
+
+        self.function_token_vocab_size = function_token_vocab_size
+        self.function_token_depth = function_token_depth
+        self.unpack_lsh_bits = unpack_lsh_bits
+        self.num_special_tokens = num_special_tokens
 
     def forward(self, token_ids: torch.Tensor) -> dict[str, torch.Tensor]:
         """Forward pass through function token decoder.
@@ -134,40 +121,40 @@ class FunctionTokenDecoder(nn.Module):
                 ids to decode.
         Returns:
             interpro_logits: binary classification logits tensor of shape
-                <float>[batch_size, num_interpro_classes]
+                <float>[batch_size, len(self.interpro_ids)]
         """
         assert token_ids.ndim == 2
-        assert token_ids.shape[1] == self.config.function_token_depth
+        assert token_ids.shape[1] == self.function_token_depth
         batch_size, depth = token_ids.shape
 
-        if self.config.unpack_lsh_bits:
+        if self.unpack_lsh_bits:
             # Shift values into [0, 2^bits/token)
-            lsh_bits = token_ids - self.config.num_special_tokens
+            lsh_bits = token_ids - self.num_special_tokens
             # extract each bit. (hob stands for highest-order bit)
             bits = torch.concat(
                 [
                     torch.bitwise_and(lsh_bits, 1 << hob).gt(0).to(torch.int32)
-                    for hob in range(self.config.bits_per_token)
+                    for hob in range(self.bits_per_token)
                 ],
                 dim=1,
             )
-            assert bits.shape == (batch_size, depth * self.config.bits_per_token)
+            assert bits.shape == (batch_size, depth * self.bits_per_token)
 
             # Shift each bit into individual vocabulary ranges, so they get distinct
             # embeddings.
             vocab_offsets = 2 * torch.arange(
-                depth * self.config.bits_per_token, device=token_ids.device
+                depth * self.bits_per_token, device=token_ids.device
             )
             inputs = vocab_offsets[None, :] + bits
 
             # zero-out special tokens, i.e. non LSH tokens.
-            where_special = token_ids < self.config.num_special_tokens
+            where_special = token_ids < self.num_special_tokens
             inputs = torch.where(where_special.any(dim=1, keepdim=True), 0, inputs)
         else:
             # Apply depth-position offset to use distinct vocabs. See __init__ for
             # explaination.
-            vocab_offsets = self.config.function_token_vocab_size * torch.arange(
-                self.config.function_token_depth, device=token_ids.device
+            vocab_offsets = self.function_token_vocab_size * torch.arange(
+                self.function_token_depth, device=token_ids.device
             )
             inputs = token_ids + vocab_offsets[None, :]
 
@@ -182,15 +169,15 @@ class FunctionTokenDecoder(nn.Module):
         return next(self.parameters()).device
 
     def decode(
-        self,
-        function_token_ids: torch.Tensor,
-        tokenizer: InterProQuantizedTokenizer,
-        decode_annotations: bool = True,
-        annotation_threshold: float = 0.1,
-        decode_keywords=True,
-        keywords_threshold: float = 0.5,
-        annotation_min_length: int | None = 5,
-        annotation_gap_merge_max: int | None = 3,
+            self,
+            function_token_ids: torch.Tensor,
+            tokenizer: InterProQuantizedTokenizer,
+            decode_annotations: bool = True,
+            annotation_threshold: float = 0.1,
+            decode_keywords=True,
+            keywords_threshold: float = 0.5,
+            annotation_min_length: int | None = 5,
+            annotation_gap_merge_max: int | None = 3,
     ):
         """Decodes function tokens into predicted annotations and keywords.
 
@@ -218,7 +205,7 @@ class FunctionTokenDecoder(nn.Module):
         """
         assert function_token_ids.ndim == 2
         assert function_token_ids.shape[1] == tokenizer.depth
-        assert self.config.function_token_depth == tokenizer.depth
+        assert self.function_token_depth == tokenizer.depth
 
         outputs = {}
 
@@ -295,7 +282,7 @@ class FunctionTokenDecoder(nn.Module):
             <pad> prefix.
         """
         assert keyword_preds.ndim == 2
-        assert keyword_preds.shape[1] == self.config.keyword_vocabulary_size
+        assert keyword_preds.shape[1] == len(self.keywords_vocabulary)
 
         keyword_positions: dict[str, list[range]] = defaultdict(list)
         for position, keyword_id in zip(*np.nonzero(keyword_preds)):

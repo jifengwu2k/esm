@@ -13,6 +13,7 @@ from esm.tokenization import (
     TokenizerCollection, EsmSequenceTokenizer, StructureTokenizer,
     SecondaryStructureTokenizer, SASADiscretizingTokenizer, InterProQuantizedTokenizer, ResidueAnnotationsTokenizer,
 )
+from esm.utils.constants import esm3 as C
 
 ModelBuilder = Callable[[torch.device | str], nn.Module]
 
@@ -49,10 +50,22 @@ def ESM3_structure_decoder_v0(
 
 def ESM3_function_decoder_v0(
         device: torch.device,
-        esm3_function_decoder_v0_pth_path: str
+        esm3_function_decoder_v0_pth_path: str,
+        keyword_vocabulary_path: str
 ) -> FunctionTokenDecoder:
     with torch.device(device):
-        model = FunctionTokenDecoder().eval()
+        model = FunctionTokenDecoder(
+            d_model=1024,
+            n_heads=8,
+            n_layers=3,
+            function_token_vocab_size=260,
+            function_token_depth=8,
+            interpro_entry_list=C.INTERPRO_ENTRY,
+            keyword_vocabulary_path=keyword_vocabulary_path,
+            unpack_lsh_bits=True,
+            num_special_tokens=4,
+            bits_per_token=8,
+        ).eval()
     state_dict = torch.load(
         esm3_function_decoder_v0_pth_path,
         map_location=device,
@@ -66,6 +79,7 @@ def ESM3_sm_open_v0(
         esm3_structure_encoder_v0_pth_path: str,
         esm3_structure_decoder_v0_pth_path: str,
         esm3_function_decoder_v0_pth_path: str,
+        keyword_vocabulary_path: str,
         esm3_sm_open_v1_pth_path: str
 ) -> ESM3:
     with torch.device(device):
@@ -81,7 +95,8 @@ def ESM3_sm_open_v0(
 
         function_decoder = ESM3_function_decoder_v0(
             device,
-            esm3_function_decoder_v0_pth_path
+            esm3_function_decoder_v0_pth_path,
+            keyword_vocabulary_path
         )
 
         tokenizers = TokenizerCollection(
