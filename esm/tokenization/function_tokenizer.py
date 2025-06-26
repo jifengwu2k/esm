@@ -29,7 +29,7 @@ class InterProQuantizedTokenizer(EsmTokenizerBase):
             self,
             depth: int,
             lsh_bits_per_token: int,
-            lsh_path: PathLike,
+            lsh_hyperplanes_path: PathLike,
             keyword_vocabulary_path: PathLike,
             keyword_idf_path: PathLike,
             interpro_entries_path: PathLike,
@@ -39,9 +39,8 @@ class InterProQuantizedTokenizer(EsmTokenizerBase):
 
         Args:
             depth: number of tokens emitted in each position.
-            lsh_bits_per_token: Number of LSH bits per token. Determines the vocabulary
-                  size.
-            lsh_path: path to locality sensitive hash (LSH) hyperplanes.
+            lsh_bits_per_token: Number of LSH bits per token. Determines the vocabulary size.
+            lsh_hyperplanes_path: path to locality sensitive hash (LSH) hyperplanes.
             keyword_vocabulary_path: path to csv containing function keyword vocabulary.
             keyword_idf_path: path to IDF values for each keyword.
             interpro_entries_path: path to list of InterPro entries in CSV format.
@@ -50,7 +49,7 @@ class InterProQuantizedTokenizer(EsmTokenizerBase):
         self.depth = depth
         self.lsh_bits_per_token = lsh_bits_per_token
         self.lsh_vocab_size = 1 << lsh_bits_per_token
-        self.lsh_path = lsh_path
+        self.lsh_hyperplanes_path = lsh_hyperplanes_path
         self.keyword_vocabulary_path = keyword_vocabulary_path
         self.keyword_idf_path = keyword_idf_path
         self.interpro_ = interpro.InterPro(entries_path=interpro_entries_path)
@@ -66,7 +65,7 @@ class InterProQuantizedTokenizer(EsmTokenizerBase):
             self.lsh_bits_per_token,
             len(self.keyword_vocabulary),
             self.depth,
-            self.lsh_path,
+            self.lsh_hyperplanes_path,
         )
 
     @cached_property

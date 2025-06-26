@@ -94,14 +94,10 @@ IN_REPO_DATA_FOLDER = Path(__file__).parents[2] / "data"
 INTERPRO_ENTRY = IN_REPO_DATA_FOLDER / "entry_list_safety_29026.list"
 INTERPRO_HIERARCHY = IN_REPO_DATA_FOLDER / "ParentChildTreeFile.txt"
 INTERPRO2GO = IN_REPO_DATA_FOLDER / "ParentChildTreeFile.txt"
-INTERPRO_2ID = "data/tag_dict_4_safety_filtered.json"
-
-LSH_TABLE_PATHS = {"8bit": "data/hyperplanes_8bit_58641.npz"}
 
 KEYWORDS_VOCABULARY = (
         IN_REPO_DATA_FOLDER / "keyword_vocabulary_safety_filtered_58641.txt"
 )
 KEYWORDS_IDF = IN_REPO_DATA_FOLDER / "keyword_idf_safety_filtered_58641.npy"
 
-RESID_CSV = "data/uniref90_and_mgnify90_residue_annotations_gt_1k_proteins.csv"
 INTERPRO2KEYWORDS = IN_REPO_DATA_FOLDER / "interpro_29026_to_keywords_58641.csv"
