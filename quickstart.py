@@ -18,9 +18,6 @@ model = ESM3_sm_open_v0(
     esm3_sm_open_v1_pth_path='models--EvolutionaryScale--esm3-sm-open-v1/snapshots/2feda652c51c57f9797fc1b01f8d6181b38fb488/data/weights/esm3_sm_open_v1.pth',
 )
 
-if device.type != "cpu":
-    model = model.to(torch.bfloat16)
-
 # Generate a completion for a partial Carbonic Anhydrase (2vvb)
 prompt = "___________________________________________________DQATSLRILNNGHAFNVEFDDSQDKAVLKGGPLDGTYRLIQFHFHWGSLDGQGSEHTVDKKKYAAELHLVHWNTKYGDFGKAVQQPDGLAVLGIFLKVGSAKPGLQKVVDVLDSIKTKGKSADFTNFDPRGLLPESLDYWTYPGSLTTPP___________________________________________________________"
 protein = ESMProtein(sequence=prompt)
