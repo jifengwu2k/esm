@@ -18,24 +18,43 @@ from esm.utils.constants import esm3 as C
 ModelBuilder = Callable[[torch.device | str], nn.Module]
 
 
-def ESM3_sm_open_v0(
+def ESM3_structure_encoder_v0(
         device: torch.device,
-        esm3_structure_encoder_v0_pth_path: str,
-        esm3_structure_decoder_v0_pth_path: str,
-        esm3_function_decoder_v0_pth_path: str,
-        keyword_vocabulary_path: str,
-        lsh_hyperplanes_path: str,
-        residue_annotations_csv_path: str,
-        esm3_sm_open_v1_pth_path: str
-) -> ESM3:
+        esm3_structure_encoder_v0_pth_path: str
+) -> StructureTokenEncoder:
     with torch.device(device):
-        structure_encoder = StructureTokenEncoder(
+        model = StructureTokenEncoder(
             d_model=1024, n_heads=1, v_heads=128, n_layers=2, d_out=128, n_codes=4096
         ).eval()
+    state_dict = torch.load(
+        esm3_structure_encoder_v0_pth_path,
+        map_location=device,
+    )
+    model.load_state_dict(state_dict)
+    return model
 
-        structure_decoder = StructureTokenDecoder(d_model=1280, n_heads=20, n_layers=30).eval()
 
-        function_decoder = FunctionTokenDecoder(
+def ESM3_structure_decoder_v0(
+        device: torch.device,
+        esm3_structure_decoder_v0_pth_path: str
+) -> StructureTokenDecoder:
+    with torch.device(device):
+        model = StructureTokenDecoder(d_model=1280, n_heads=20, n_layers=30).eval()
+    state_dict = torch.load(
+        esm3_structure_decoder_v0_pth_path,
+        map_location=device,
+    )
+    model.load_state_dict(state_dict)
+    return model
+
+
+def ESM3_function_decoder_v0(
+        device: torch.device,
+        esm3_function_decoder_v0_pth_path: str,
+        keyword_vocabulary_path: str
+) -> FunctionTokenDecoder:
+    with torch.device(device):
+        model = FunctionTokenDecoder(
             d_model=1024,
             n_heads=8,
             n_layers=3,
@@ -47,6 +66,40 @@ def ESM3_sm_open_v0(
             num_special_tokens=4,
             bits_per_token=8,
         ).eval()
+    state_dict = torch.load(
+        esm3_function_decoder_v0_pth_path,
+        map_location=device,
+    )
+    model.load_state_dict(state_dict)
+    return model
+
+
+def ESM3_sm_open_v0(
+        device: torch.device,
+        esm3_structure_encoder_v0_pth_path: str,
+        esm3_structure_decoder_v0_pth_path: str,
+        esm3_function_decoder_v0_pth_path: str,
+        keyword_vocabulary_path: str,
+        lsh_hyperplanes_path: str,
+        residue_annotations_csv_path: str,
+        esm3_sm_open_v1_pth_path: str
+) -> ESM3:
+    with torch.device(device):
+        structure_encoder = ESM3_structure_encoder_v0(
+            device,
+            esm3_structure_encoder_v0_pth_path
+        )
+
+        structure_decoder = ESM3_structure_decoder_v0(
+            device,
+            esm3_structure_decoder_v0_pth_path
+        )
+
+        function_decoder = ESM3_function_decoder_v0(
+            device,
+            esm3_function_decoder_v0_pth_path,
+            keyword_vocabulary_path
+        )
 
         tokenizers = TokenizerCollection(
             sequence=EsmSequenceTokenizer(),
@@ -78,27 +131,8 @@ def ESM3_sm_open_v0(
             function_decoder=function_decoder,
             tokenizers=tokenizers,
         ).eval()
-
     state_dict = torch.load(
-        esm3_sm_open_v1_pth_path,
-        map_location=device,
+        esm3_sm_open_v1_pth_path, map_location=device
     )
-
-    state_dict |= torch.load(
-        esm3_structure_encoder_v0_pth_path,
-        map_location=device,
-    )
-
-    state_dict |= torch.load(
-        esm3_structure_decoder_v0_pth_path,
-        map_location=device,
-    )
-
-    state_dict |= torch.load(
-        esm3_function_decoder_v0_pth_path,
-        map_location=device,
-    )
-
-    model.load_state_dict(state_dict)
-
+    model.load_state_dict(state_dict, strict=False)
     return model
