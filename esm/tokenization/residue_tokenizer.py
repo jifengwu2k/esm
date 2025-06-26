@@ -7,15 +7,12 @@ import torch.nn.functional as F
 from cloudpathlib import AnyPath
 
 from esm.tokenization.tokenizer_base import EsmTokenizerBase
-from esm.utils.constants import esm3 as C
 
 Sample = dict[str, Any]
 
 
 class ResidueAnnotationsTokenizer(EsmTokenizerBase):
-    def __init__(self, csv_path: str | None = None, max_annotations: int = 16):
-        if csv_path is None:
-            csv_path = str(C.data_root("esm3") / C.RESID_CSV)
+    def __init__(self, csv_path, max_annotations: int):
         self.csv_path = csv_path
         self.max_annotations = max_annotations
 

@@ -4,7 +4,6 @@ from esm.pretrained import ESM3_sm_open_v0
 from esm.sdk.api import ESMProtein, GenerationConfig
 
 
-
 # This will instantiate the model on your machine.
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

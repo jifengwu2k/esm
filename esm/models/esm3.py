@@ -548,7 +548,9 @@ class ESM3(nn.Module, ESM3InferenceClient):
 
         # Initialize default values for missing tracks
         default_protein_tensor = ESMProteinTensor.empty(
-            len(input) - 2, tokenizers=self.tokenizers, device=input.device
+            length=len(input) - 2,
+            tokenizers=self.tokenizers,
+            device=input.device
         )
         for track in attr.fields(ESMProteinTensor):
             if getattr(protein_tensor, track.name, None) is None:

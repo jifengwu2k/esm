@@ -12,18 +12,9 @@ import torch
 import torch.nn.functional as F
 
 from esm.tokenization.tokenizer_base import EsmTokenizerBase
-from esm.utils.constants import esm3 as C
 from esm.utils.function import interpro, lsh, tfidf
 from esm.utils.misc import stack_variable_length_tensors
 from esm.utils.types import FunctionAnnotation, PathLike
-
-
-def _default_data_path(x: PathLike | None, d: PathLike) -> PathLike:
-    return x if x is not None else C.data_root("esm3") / d
-
-
-def _default_local_data_path(x: PathLike | None, d: PathLike) -> PathLike:
-    return x if x is not None else d
 
 
 class InterProQuantizedTokenizer(EsmTokenizerBase):
@@ -35,14 +26,14 @@ class InterProQuantizedTokenizer(EsmTokenizerBase):
     """
 
     def __init__(
-        self,
-        depth: int = 8,
-        lsh_bits_per_token: int = 8,
-        lsh_path: PathLike | None = None,
-        keyword_vocabulary_path: PathLike | None = None,
-        keyword_idf_path: PathLike | None = None,
-        interpro_entry_path: PathLike | None = None,
-        interpro2keywords_path: PathLike | None = None,
+            self,
+            depth: int,
+            lsh_bits_per_token: int,
+            lsh_path: PathLike,
+            keyword_vocabulary_path: PathLike,
+            keyword_idf_path: PathLike,
+            interpro_entries_path: PathLike,
+            interpro2keywords_path: PathLike,
     ):
         """Constructs function tokenizer.
 
@@ -53,28 +44,17 @@ class InterProQuantizedTokenizer(EsmTokenizerBase):
             lsh_path: path to locality sensitive hash (LSH) hyperplanes.
             keyword_vocabulary_path: path to csv containing function keyword vocabulary.
             keyword_idf_path: path to IDF values for each keyword.
-            interpro_entry_csv_path: path to list of InterPro entries in CSV format.
+            interpro_entries_path: path to list of InterPro entries in CSV format.
             interpro2keywords_path: path to CSV mapping InterPro IDs to function keywords.
         """
         self.depth = depth
-
-        self.keyword_vocabulary_path = _default_local_data_path(
-            keyword_vocabulary_path, C.KEYWORDS_VOCABULARY
-        )
-        self.keyword_idf_path = _default_local_data_path(
-            keyword_idf_path, C.KEYWORDS_IDF
-        )
-
-        self._interpro2keywords_path = _default_local_data_path(
-            interpro2keywords_path, C.INTERPRO2KEYWORDS
-        )
-        self.interpro_ = interpro.InterPro(
-            entries_path=_default_local_data_path(interpro_entry_path, C.INTERPRO_ENTRY)
-        )
-
-        self.lsh_path = lsh_path
         self.lsh_bits_per_token = lsh_bits_per_token
         self.lsh_vocab_size = 1 << lsh_bits_per_token
+        self.lsh_path = lsh_path
+        self.keyword_vocabulary_path = keyword_vocabulary_path
+        self.keyword_idf_path = keyword_idf_path
+        self.interpro_ = interpro.InterPro(entries_path=interpro_entries_path)
+        self._interpro2keywords_path = interpro2keywords_path
 
         # This is the offset into the vocabulary where LSH tokens start.
         self._lsh_token_vocab_offset = len(self.special_tokens) + 1  # +1 for <none>
@@ -86,7 +66,7 @@ class InterProQuantizedTokenizer(EsmTokenizerBase):
             self.lsh_bits_per_token,
             len(self.keyword_vocabulary),
             self.depth,
-            _default_data_path(self.lsh_path, C.LSH_TABLE_PATHS["8bit"]),
+            self.lsh_path,
         )
 
     @cached_property
@@ -145,10 +125,10 @@ class InterProQuantizedTokenizer(EsmTokenizerBase):
         return where[:, 0]
 
     def tokenize(
-        self,
-        annotations: list[FunctionAnnotation],
-        seqlen: int,
-        p_keyword_dropout: float = 0.0,
+            self,
+            annotations: list[FunctionAnnotation],
+            seqlen: int,
+            p_keyword_dropout: float = 0.0,
     ) -> list[str]:
         """Encodes range-annotations of protein function as tokens.
 
@@ -178,7 +158,7 @@ class InterProQuantizedTokenizer(EsmTokenizerBase):
 
         if p_keyword_dropout > 0:
             keyword_mask = (
-                np.random.random(len(self._tfidf.vocabulary)) < p_keyword_dropout
+                    np.random.random(len(self._tfidf.vocabulary)) < p_keyword_dropout
             )
         else:
             keyword_mask = None
@@ -204,7 +184,7 @@ class InterProQuantizedTokenizer(EsmTokenizerBase):
         return tokens
 
     def _function_text_hash(
-        self, labels: Collection[str], keyword_mask: np.ndarray | None = None
+            self, labels: Collection[str], keyword_mask: np.ndarray | None = None
     ) -> np.ndarray | None:
         """Applies a locality sensitive hash (LSH) to function text.
 
@@ -247,7 +227,7 @@ class InterProQuantizedTokenizer(EsmTokenizerBase):
         return self._lsh(vec)[0, :]
 
     def encode(
-        self, tokens: list[str], add_special_tokens: bool = True
+            self, tokens: list[str], add_special_tokens: bool = True
     ) -> torch.Tensor:
         """Encodes string tokens as token-id tensor.
 
@@ -283,7 +263,7 @@ class InterProQuantizedTokenizer(EsmTokenizerBase):
         if re.match(r"<lsh:[\d+,]+>", token):
             lsh_ids = [int(lsh_id) for lsh_id in re.findall(r"\d+", token)]
             assert (
-                len(lsh_ids) == self.depth
+                    len(lsh_ids) == self.depth
             ), f"Expected token to have {self.depth} ids found {lsh_ids}"
             return [self._lsh_token_vocab_offset + lsh_id for lsh_id in lsh_ids]
         elif token == "<none>" or token in self.special_tokens:
@@ -292,7 +272,7 @@ class InterProQuantizedTokenizer(EsmTokenizerBase):
             raise ValueError(f"Unknown token: {token}")
 
     def batch_encode(
-        self, token_batch: list[list[str]], add_special_tokens: bool = True
+            self, token_batch: list[list[str]], add_special_tokens: bool = True
     ) -> torch.Tensor:
         """Encodes batch of function tokens.
 

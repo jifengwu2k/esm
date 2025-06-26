@@ -80,6 +80,8 @@ def ESM3_sm_open_v0(
         esm3_structure_decoder_v0_pth_path: str,
         esm3_function_decoder_v0_pth_path: str,
         keyword_vocabulary_path: str,
+        lsh_path: str,
+        csv_path: str,
         esm3_sm_open_v1_pth_path: str
 ) -> ESM3:
     with torch.device(device):
@@ -104,8 +106,19 @@ def ESM3_sm_open_v0(
             structure=StructureTokenizer(),
             secondary_structure=SecondaryStructureTokenizer(kind="ss8"),
             sasa=SASADiscretizingTokenizer(),
-            function=InterProQuantizedTokenizer(),
-            residue_annotations=ResidueAnnotationsTokenizer(),
+            function=InterProQuantizedTokenizer(
+                depth=8,
+                lsh_bits_per_token=8,
+                lsh_path=lsh_path,
+                keyword_vocabulary_path=C.KEYWORDS_VOCABULARY,
+                keyword_idf_path=C.KEYWORDS_IDF,
+                interpro_entries_path=C.INTERPRO_ENTRY,
+                interpro2keywords_path=C.INTERPRO2KEYWORDS,
+            ),
+            residue_annotations=ResidueAnnotationsTokenizer(
+                csv_path=csv_path,
+                max_annotations=16
+            ),
         )
 
         model = ESM3(

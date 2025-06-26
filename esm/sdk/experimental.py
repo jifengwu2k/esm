@@ -31,19 +31,11 @@ class ESM3GuidedDecoding:
 
     def __init__(
         self,
-        client: ESM3InferenceClient,
+        client: ESM3,
         scoring_function: GuidedDecodingScoringFunction,
     ):
-        if isinstance(client, ESM3):
-            self.tokenizers = client.tokenizers
-        elif isinstance(client, ESM3ForgeInferenceClient):
-            self.tokenizers = get_esm3_model_tokenizers(client.model)
-        else:
-            raise ValueError(
-                "client must be an instance of ESM3 or ESM3ForgeInferenceClient"
-            )
-
         self.client = client
+        self.tokenizers = client.tokenizers
         self.scoring_function = scoring_function
 
     def guided_generate(
@@ -198,7 +190,7 @@ class ESM3GuidedDecoding:
         self, protein_tensor: ESMProteinTensor
     ) -> ESMProteinTensor:
         empty_protein_tensor = ESMProteinTensor.empty(
-            len(protein_tensor) - 2,
+            length=len(protein_tensor) - 2,
             tokenizers=self.tokenizers,
             device=protein_tensor.device,
         )

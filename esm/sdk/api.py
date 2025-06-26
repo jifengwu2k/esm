@@ -14,7 +14,6 @@ from esm.tokenization import (
     get_esm3_model_tokenizers,
 )
 from esm.utils import encoding
-from esm.utils.constants.models import ESM3_OPEN_SMALL
 from esm.utils.misc import (
     get_chainbreak_boundaries_from_sequence,
 )
@@ -226,12 +225,9 @@ class ESMProteinTensor(ProteinType):
     def empty(
         cls,
         length: int,
-        tokenizers: TokenizerCollectionProtocol | None = None,
-        device: torch.device | str = "cpu",
+        tokenizers: TokenizerCollectionProtocol,
+        device: torch.device,
     ) -> ESMProteinTensor:
-        if tokenizers is None:
-            tokenizers = get_esm3_model_tokenizers(ESM3_OPEN_SMALL)
-
         return ESMProteinTensor(
             sequence=encoding.get_default_sequence_tokens(
                 length, tokenizers.sequence
