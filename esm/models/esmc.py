@@ -28,7 +28,6 @@ from esm.sdk.api import (
 )
 from esm.tokenization import EsmSequenceTokenizer
 from esm.utils import encoding
-from esm.utils.constants.models import ESMC_600M
 from esm.utils.decoding import decode_sequence
 from esm.utils.misc import stack_variable_length_tensors
 from esm.utils.sampling import _BatchedESMProteinTensor
@@ -74,20 +73,6 @@ class ESMC(nn.Module, ESMCInferenceClient):
 
         self.sequence_head = RegressionHead(d_model, 64)
         self.tokenizer = tokenizer
-
-    @classmethod
-    def from_pretrained(
-        cls, model_name: str = ESMC_600M, device: torch.device | None = None
-    ) -> ESMC:
-        from esm.pretrained import load_local_model
-
-        if device is None:
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        model = load_local_model(model_name, device=device)
-        if device.type != "cpu":
-            model = model.to(torch.bfloat16)
-        assert isinstance(model, ESMC)
-        return model
 
     @property
     def device(self):

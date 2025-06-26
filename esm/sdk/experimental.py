@@ -6,15 +6,12 @@ from tqdm import tqdm
 
 from esm.models.esm3 import ESM3
 from esm.sdk.api import (
-    ESM3InferenceClient,
     ESMProtein,
     ESMProteinError,
     ESMProteinTensor,
     SamplingConfig,
     SamplingTrackConfig,
 )
-from esm.sdk.forge import ESM3ForgeInferenceClient
-from esm.tokenization import get_esm3_model_tokenizers
 
 
 class GuidedDecodingScoringFunction(ABC):
@@ -30,22 +27,22 @@ class ESM3GuidedDecoding:
     """
 
     def __init__(
-        self,
-        client: ESM3,
-        scoring_function: GuidedDecodingScoringFunction,
+            self,
+            client: ESM3,
+            scoring_function: GuidedDecodingScoringFunction,
     ):
         self.client = client
         self.tokenizers = client.tokenizers
         self.scoring_function = scoring_function
 
     def guided_generate(
-        self,
-        protein: ESMProtein,
-        num_decoding_steps: int,
-        num_samples_per_step: int,
-        denoised_prediction_temperature: float = 0.0,
-        track: str = "sequence",
-        verbose: bool = True,
+            self,
+            protein: ESMProtein,
+            num_decoding_steps: int,
+            num_samples_per_step: int,
+            denoised_prediction_temperature: float = 0.0,
+            track: str = "sequence",
+            verbose: bool = True,
     ) -> ESMProtein:
         protein_tensor = self.client.encode(protein)
 
@@ -112,9 +109,9 @@ class ESM3GuidedDecoding:
         return decoded_protein
 
     def reward_function(
-        self,
-        protein_tensor: ESMProteinTensor,
-        denoised_prediction_temperature: float = 0.0,
+            self,
+            protein_tensor: ESMProteinTensor,
+            denoised_prediction_temperature: float = 0.0,
     ) -> float:
         denoised_protein = self.predict_denoised(
             protein_tensor, temperature=denoised_prediction_temperature
@@ -122,7 +119,7 @@ class ESM3GuidedDecoding:
         return self.scoring_function(denoised_protein)
 
     def get_number_of_masked_positions(
-        self, protein_tensor: ESMProteinTensor, track: str = "sequence"
+            self, protein_tensor: ESMProteinTensor, track: str = "sequence"
     ) -> int:
         assert isinstance(protein_tensor, ESMProteinTensor)
         track_tensor = getattr(protein_tensor, track)
@@ -131,11 +128,11 @@ class ESM3GuidedDecoding:
         return is_mask.sum().item()  # type: ignore
 
     def randomly_unmask_positions(
-        self,
-        protein_tensor: ESMProteinTensor,
-        num_positions_to_unmask: int,
-        temperature: float = 1.0,
-        track: str = "sequence",
+            self,
+            protein_tensor: ESMProteinTensor,
+            num_positions_to_unmask: int,
+            temperature: float = 1.0,
+            track: str = "sequence",
     ) -> ESMProteinTensor:
         track_tensor = getattr(protein_tensor, track)
         assert track_tensor is not None
@@ -171,7 +168,7 @@ class ESM3GuidedDecoding:
         return protein_tensor
 
     def predict_denoised(
-        self, protein_tensor: ESMProteinTensor, temperature: float = 0.0
+            self, protein_tensor: ESMProteinTensor, temperature: float = 0.0
     ) -> ESMProtein:
         denoised_protein_tensor_output = self.client.forward_and_sample(
             protein_tensor,
@@ -187,7 +184,7 @@ class ESM3GuidedDecoding:
         return denoised_protein
 
     def maybe_add_default_structure_tokens(
-        self, protein_tensor: ESMProteinTensor
+            self, protein_tensor: ESMProteinTensor
     ) -> ESMProteinTensor:
         empty_protein_tensor = ESMProteinTensor.empty(
             length=len(protein_tensor) - 2,

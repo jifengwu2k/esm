@@ -2,21 +2,16 @@ from __future__ import annotations
 
 from abc import ABC
 from copy import deepcopy
-from typing import List, Sequence
+from typing import Sequence
 
 import attr
 import torch
 from attr import asdict, define
 
 import esm.utils.constants.api as C
-from esm.tokenization import (
-    TokenizerCollectionProtocol,
-    get_esm3_model_tokenizers,
-)
+from esm.tokenization import TokenizerCollectionProtocol
 from esm.utils import encoding
-from esm.utils.misc import (
-    get_chainbreak_boundaries_from_sequence,
-)
+from esm.utils.misc import get_chainbreak_boundaries_from_sequence
 from esm.utils.structure.protein_chain import ProteinChain
 from esm.utils.structure.protein_complex import ProteinComplex
 from esm.utils.types import FunctionAnnotation, PathOrBuffer
@@ -39,7 +34,6 @@ class ESMProtein(ProteinType):
     plddt: torch.Tensor | None = None
     ptm: torch.Tensor | None = None
 
-
     # When calling EvolutionaryScale API, use this flag to disclose any
     # sequences that may potentially have concerns.
     # Such sequences may not go through standard safety filter for approved users.
@@ -60,11 +54,11 @@ class ESMProtein(ProteinType):
 
     @classmethod
     def from_pdb(
-        cls,
-        path: PathOrBuffer,
-        chain_id: str = "detect",
-        id: str | None = None,
-        is_predicted: bool = False,
+            cls,
+            path: PathOrBuffer,
+            chain_id: str = "detect",
+            id: str | None = None,
+            is_predicted: bool = False,
     ) -> ESMProtein:
         protein_chain = ProteinChain.from_pdb(
             path=path, chain_id=chain_id, id=id, is_predicted=is_predicted
@@ -73,7 +67,7 @@ class ESMProtein(ProteinType):
 
     @classmethod
     def from_protein_chain(
-        cls, protein_chain: ProteinChain, with_annotations: bool = False
+            cls, protein_chain: ProteinChain, with_annotations: bool = False
     ) -> ESMProtein:
         # By default, we don't annotate with DSSP / SASA, which are expensive.
         # If mkdssp is installed, we can annotate with a flag.
@@ -96,7 +90,7 @@ class ESMProtein(ProteinType):
 
     @classmethod
     def from_protein_complex(
-        cls, protein_complex: ProteinComplex, with_annotations: bool = False
+            cls, protein_complex: ProteinComplex, with_annotations: bool = False
     ) -> ESMProtein:
         if with_annotations:
             raise NotImplementedError(
@@ -140,13 +134,13 @@ class ESMProtein(ProteinType):
         return protein_chain
 
     def to_protein_complex(
-        self, copy_annotations_from_ground_truth: ProteinComplex | None = None
+            self, copy_annotations_from_ground_truth: ProteinComplex | None = None
     ) -> ProteinComplex:
         assert (
-            self.sequence is not None
+                self.sequence is not None
         ), "ESMProtein must have a sequence to convert to ProteinComplex"
         assert (
-            self.coordinates is not None
+                self.coordinates is not None
         ), "ESMProtein must have coordinates to convert to ProteinComplex"
         coords = self.coordinates.to("cpu").numpy()
 
@@ -223,10 +217,10 @@ class ESMProteinTensor(ProteinType):
 
     @classmethod
     def empty(
-        cls,
-        length: int,
-        tokenizers: TokenizerCollectionProtocol,
-        device: torch.device,
+            cls,
+            length: int,
+            tokenizers: TokenizerCollectionProtocol,
+            device: torch.device,
     ) -> ESMProteinTensor:
         return ESMProteinTensor(
             sequence=encoding.get_default_sequence_tokens(
@@ -409,7 +403,7 @@ class ESM3InferenceClient(ABC):
         raise NotImplementedError
 
     def batch_generate(
-        self, inputs: Sequence[ProteinType], configs: Sequence[GenerationConfig]
+            self, inputs: Sequence[ProteinType], configs: Sequence[GenerationConfig]
     ) -> Sequence[ProteinType]:
         # Same as generate(...), but generates a batch of proteins at once.
         raise NotImplementedError
@@ -424,7 +418,7 @@ class ESM3InferenceClient(ABC):
         raise NotImplementedError
 
     def logits(
-        self, input: ESMProteinTensor, config: LogitsConfig = LogitsConfig()
+            self, input: ESMProteinTensor, config: LogitsConfig = LogitsConfig()
     ) -> LogitsOutput:
         # Our API generally discourages using raw forwards.
         # This is because sending logits can be prohibitively expensive.
@@ -432,7 +426,7 @@ class ESM3InferenceClient(ABC):
         raise NotImplementedError
 
     def forward_and_sample(
-        self, input: ESMProteinTensor, sampling_configuration: SamplingConfig
+            self, input: ESMProteinTensor, sampling_configuration: SamplingConfig
     ) -> ForwardAndSampleOutput:
         # forward_and_sample runs a single model forward, sampling tokens according to `SamplingConfiguration`.
         # This is the way for power users to run ESM3. We hope to design this in a way to enable high throughput
@@ -455,7 +449,7 @@ class ESMCInferenceClient(ABC):
         raise NotImplementedError
 
     def logits(
-        self, input: ESMProteinTensor, config: LogitsConfig = LogitsConfig()
+            self, input: ESMProteinTensor, config: LogitsConfig = LogitsConfig()
     ) -> LogitsOutput:
         raise NotImplementedError
 
