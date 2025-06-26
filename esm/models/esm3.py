@@ -210,9 +210,9 @@ class ESM3(nn.Module, ESM3InferenceClient):
         )
         self.output_heads = OutputHeads(d_model)
 
-        self.structure_encoder = structure_encoder
-        self.structure_decoder = structure_decoder
-        self.function_decoder = function_decoder
+        self._structure_encoder = structure_encoder
+        self._structure_decoder = structure_decoder
+        self._function_decoder = function_decoder
 
         self.tokenizers = tokenizers
 
@@ -225,13 +225,13 @@ class ESM3(nn.Module, ESM3InferenceClient):
         return self
 
     def get_structure_encoder(self) -> StructureTokenEncoder:
-        return self.structure_encoder
+        return self._structure_encoder
 
     def get_structure_decoder(self) -> StructureTokenDecoder:
-        return self.structure_decoder
+        return self._structure_decoder
 
     def get_function_decoder(self) -> FunctionTokenDecoder:
-        return self.function_decoder
+        return self._function_decoder
 
     def forward(
             self,
